@@ -24,18 +24,36 @@ export default function Battle() {
   const playerImgRef = useRef(null);
   const enemyImgRef = useRef(null);
 
-  //animation reference on atk
-  const animRef = useRef({
-    playerOffset: 0,
-    enemyOffset: 0,
-    targetShake: 0,
-    sparks: [],
-  });
+  //   //animation reference on atk
+  //   const animRef = useRef({
+  //     playerOffset: 0,
+  //     enemyOffset: 0,
+  //     targetShake: 0,
+  //     sparks: [],
+  //   });
 
   // example states
   const [playerHp, setPlayerHP] = useState(100);
   const [enemyHp, setEnemyHP] = useState(100);
   //these are the starting states for lifebars
+
+  //load sprites on canvas
+  const [loaded, setLoaded] = useState(false);
+  useEffect(() => {
+    const p = new Image(); //load PLAYER sprite
+    const e = new Image(); //load ENEMY sprite
+    let loadedCount = 0;
+    const checkLoaded = () => {
+      loadedCount++;
+      if (loadedCount === 2) setLoaded(true); //once both sprites are loaded, the counter sets the state to True
+    };
+    p.src = SPRITE_SRC_PLAYER;
+    e.src = SPRITE_SRC_ENEMY;
+    p.onload = checkLoaded;
+    e.onload = checkLoaded;
+    playerImgRef.current = p; //set PlayerImage to current loaded p image
+    enemyImgRef.current = e; //set EnemyImage to current loaded e image
+  }, []);
 
   // useEffect for dependencies
   useEffect(() => {
@@ -46,6 +64,42 @@ export default function Battle() {
     ctx.fillStyle = "#fff";
     ctx.fillText("Battle area", 10, 20);
   }, []);
+
+  function drawSprite(ctx, img, x, y) {
+    if (img && img.complete && img.naturalWidth !== 0) {
+      ctx.drawImage(img, x, y, DRAW_SIZE, DRAW_SIZE);
+    }
+  }
+  //preload hp bar math, position, background color, life color
+  function drawHP(ctx, name, hp, maxHp, x, y) {
+    const w = 140;
+    const h = 12;
+    ctx.fillStyle = "#000";
+    ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+    ctx.fillStyle = "#444";
+    ctx.fillRect(x, y, w, h);
+    const pct = Math.max(0, hp) / maxHp;
+    ctx.fillStyle = pct > 0.5 ? "#4caf50" : pct > 0.2 ? "#ffb74d" : "#f44336";
+    //logic for position of lifebar
+    ctx.fillRect(x, y, Math.round(w * pct), h);
+    ctx.fillStyle = "#fff";
+    ctx.font = "13px sans-serif";
+    //math logic for actual hp and maxHp difference
+    ctx.fillText(`${name} ${Math.round(hp)}/${maxHp}`, x, y - 6);
+  }
+
+  useEffect(() => {
+    if (!loaded) return; // if they're not ready it doesn't render
+    const ctx = canvasRef.current.getContext("2d");
+
+    // drawing sprites in canvas
+    drawSprite(ctx, playerImgRef.current, LEFT_X, Y);
+    drawSprite(ctx, enemyImgRef.current, RIGHT_X, Y);
+    //drawing lifebars in canvas
+    drawHP(ctx, "Player", playerHp, 100, 20, 20);
+    drawHP(ctx, "Enemy", enemyHp, 100, CANVAS_W - 160, 20);
+  }, [loaded]);
+  //actually draws the sprites using references for context, source and position of sprites in canvas
 
   return (
     // add flex container
