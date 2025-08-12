@@ -1,11 +1,16 @@
-import { useState } from "react";
+import Battle from "./components/Battle";
 
-function App() {
+export default function App() {
   return (
-    <>
-      <h1> Knight Battler - Prototype </h1>
-    </>
+    <div className="app">
+      <header>
+        <h1>Mini Battler — Prototype</h1>
+        <p>
+          Due cavalieri: blu (tu) vs verde (avversario). Premi{" "}
+          <strong>Attack</strong> per vedere l'animazione.
+        </p>
+        <Battle />
+      </header>
+    </div>
   );
 }
-
-export default App;

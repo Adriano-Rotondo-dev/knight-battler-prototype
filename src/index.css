@@ -1,5 +1,15 @@
-* {
+@import "bootstrap";
+
+body {
+  background: #0f1113;
+  color: #eee;
   margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+  padding: 20px;
+}
+.app {
+  max-width: 1000px;
+  margin: 0 auto;
+}
+canvas {
+  image-rendering: pixelated;
 }
