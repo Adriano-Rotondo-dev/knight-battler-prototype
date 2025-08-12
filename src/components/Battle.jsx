@@ -1,12 +1,36 @@
-import React, { use, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // set canvas w and h
 const CANVAS_W = 640;
 const CANVAS_H = 320;
 
+//set sprites constant src
+const SPRITE_SRC_PLAYER = "/sprites/blue.png";
+const SPRITE_SRC_ENEMY = "/sprites/green.png";
+//set sprite sizes and scaling
+const SPRITE_SIZE = 64; //original sprite size in pixel
+const SCALE = 3; //scale by 3 the original 64x64 sprite
+const DRAW_SIZE = SPRITE_SIZE * SCALE; //calc effective size of sprite on rendering (192x192)
+//set sprite positions
+const LEFT_X = 80; //player 1 position (left)
+const RIGHT_X = CANVAS_W - 80 - DRAW_SIZE; //enemy placement (right)
+const Y = (CANVAS_H - DRAW_SIZE) / 2; //vertical placement of sprites on rendering. calculate by dividing space by 2, centering sprites
+
 export default function Battle() {
   // get <canvas> DOM with useRef
   const canvasRef = useRef(null);
+
+  //load sprites to render them with drawImage
+  const playerImgRef = useRef(null);
+  const enemyImgRef = useRef(null);
+
+  //animation reference on atk
+  const animRef = useRef({
+    playerOffset: 0,
+    enemyOffset: 0,
+    targetShake: 0,
+    sparks: [],
+  });
 
   // example states
   const [playerHp, setPlayerHP] = useState(100);

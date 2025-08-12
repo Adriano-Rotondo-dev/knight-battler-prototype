@@ -1,5 +1,8 @@
 # Base Structure
 
+- install bootstrap
+- use canvas to render sprites inside a container
+
 ## Battle UI
 
 - blue sx
