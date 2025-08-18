@@ -6,7 +6,7 @@ export default function App() {
       <header>
         <h1>Mini Battler — Prototype</h1>
         <p>
-          Due cavalieri: blu (tu) vs verde (avversario). Premi{" "}
+          Due cavalieri: blu (tu) vs verde (avversario). Premi
           <strong>Attack</strong> per vedere l'animazione.
         </p>
         <Battle />
