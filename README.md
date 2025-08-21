@@ -2,6 +2,7 @@
 
 - install bootstrap
 - use canvas to render sprites inside a container
+- install nes.css
 
 ## Battle UI
 

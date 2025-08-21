@@ -80,7 +80,7 @@ export default function Battle() {
     //logic for position of lifebar
     ctx.fillRect(x, y, Math.round(w * pct), h);
     ctx.fillStyle = "#fff";
-    ctx.font = "13px sans-serif";
+    ctx.font = "16px PressStart2P";
     //math logic for actual hp and maxHp difference
     ctx.fillText(`${name} ${Math.round(hp)}/${maxHp}`, x, y - 6);
   }
@@ -168,7 +168,9 @@ export default function Battle() {
       />
       {/* set base ui for testing */}
       <div className="ui_controls m-5">
-        <button onClick={handleAttack}>Attack</button>
+        <button onClick={handleAttack} type="button" className="nes-btn">
+          <span className="nes-text">Attack</span>
+        </button>
         <div className="player">Player HP:{playerHp}</div>{" "}
         {/* testing track of player info*/}
         <div className="enemy">Enemy HP:{enemyHp}</div>{" "}
