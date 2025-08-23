@@ -8,6 +8,8 @@ const CANVAS_H = 320;
 const SPRITE_SRC_PLAYER = "/sprites/blue.png";
 const SPRITE_SRC_ENEMY = "/sprites/green.png";
 const SPRITE_SRC_PLAYER_STRIKE = "/sprites/blue_strike.png";
+const SPRITE_SRC_PLAYER_LIGHTSTRIKE = "/sprites/blue_lightstrike.png"; // sprite per attacco speciale
+
 //set sprite sizes and scaling
 const SPRITE_SIZE = 64; //original sprite size in pixel
 const SCALE = 3; //scale by 3 the original 64x64 sprite
@@ -25,31 +27,41 @@ export default function Battle() {
   const playerImgRef = useRef(null);
   const enemyImgRef = useRef(null);
   const playerStrikeImgRef = useRef(null);
+  const playerLightStrikeImgRef = useRef(null);
 
   // example states
   const [playerHp, setPlayerHP] = useState(100);
   const [enemyHp, setEnemyHP] = useState(100);
   //these are the starting states for lifebars
 
+  //turn order states
+  const [turn, setTurn] = useState("player"); // player o enemy
+  const [shieldActive, setShieldActive] = useState(false); // stato di parata
+  const [playerSkipTurn, setPlayerSkipTurn] = useState(false); // salta un turno dopo special
+
   //load sprites on canvas
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     const p = new Image(); //load PLAYER sprite
     const ps = new Image(); //load PLAYER Strike sprite
+    const pls = new Image(); //load PLAYER LightStrike sprite
     const e = new Image(); //load ENEMY sprite
     let loadedCount = 0;
     const checkLoaded = () => {
       loadedCount++;
-      if (loadedCount === 3) setLoaded(true); //once both sprites are loaded, the counter sets the state to True
+      if (loadedCount === 4) setLoaded(true); //una volta caricati tutti gli sprite imposta lo stato
     };
     p.src = SPRITE_SRC_PLAYER;
     ps.src = SPRITE_SRC_PLAYER_STRIKE;
+    pls.src = SPRITE_SRC_PLAYER_LIGHTSTRIKE;
     e.src = SPRITE_SRC_ENEMY;
     p.onload = checkLoaded;
     ps.onload = checkLoaded;
+    pls.onload = checkLoaded;
     e.onload = checkLoaded;
     playerImgRef.current = p; //set PlayerImage to current loaded p image
     playerStrikeImgRef.current = ps; // set Player Strike Image to currently loaded images
+    playerLightStrikeImgRef.current = pls; //set Player LightStrike Image to currently loaded pls image
     enemyImgRef.current = e; //set EnemyImage to current loaded e image
   }, []);
 
@@ -89,6 +101,8 @@ export default function Battle() {
     playerX: LEFT_X, // posizione corrente player (si muove in avanti)
     sprite: SPRITE_SRC_PLAYER, // sprite attuale del player
     isAttacking: false,
+    enemyX: RIGHT_X, // posizione corrente nemico
+    enemyIsAttacking: false, // animazione nemico
   });
 
   function redraw(ctx) {
@@ -99,21 +113,36 @@ export default function Battle() {
     const playerImg =
       animRef.current.sprite === SPRITE_SRC_PLAYER
         ? playerImgRef.current
-        : playerStrikeImgRef.current;
+        : animRef.current.sprite === SPRITE_SRC_PLAYER_STRIKE
+        ? playerStrikeImgRef.current
+        : playerLightStrikeImgRef.current;
     drawSprite(ctx, playerImg, animRef.current.playerX, Y);
 
     // enemy
-    drawSprite(ctx, enemyImgRef.current, RIGHT_X, Y);
+    drawSprite(ctx, enemyImgRef.current, animRef.current.enemyX, Y);
 
     // lifebars
     drawHP(ctx, "Player", playerHp, 100, 20, 20);
     drawHP(ctx, "Enemy", enemyHp, 100, CANVAS_W - 160, 20);
   }
 
-  function handleAttack() {
-    if (animRef.current.isAttacking) return; // evita doppi click
+  //fine turno player, passa al nemico
+  function endPlayerTurn(skip = false) {
+    setTurn("enemy");
+    if (skip) {
+      setPlayerSkipTurn(true); // se ha fatto attacco speciale, salta turno dopo
+    }
+    setTimeout(enemyTurn, 500); // attesa breve e poi attacco nemico
+  }
+
+  //attacco player
+  function handleAttack(double = false) {
+    if (turn !== "player" || animRef.current.isAttacking) return;
+
     animRef.current.isAttacking = true;
-    animRef.current.sprite = "/sprites/blue_strike.png";
+    animRef.current.sprite = double
+      ? SPRITE_SRC_PLAYER_LIGHTSTRIKE
+      : SPRITE_SRC_PLAYER_STRIKE;
 
     const ctx = canvasRef.current.getContext("2d");
     const startX = LEFT_X;
@@ -132,7 +161,9 @@ export default function Battle() {
         requestAnimationFrame(animate);
       } else {
         // infligge danno
-        const dmg = Math.floor(10 + Math.random() * 11); // 10–20
+        const dmg = double
+          ? Math.floor(20 + Math.random() * 21) // 20–40 se speciale
+          : Math.floor(10 + Math.random() * 11); // 10–20 normale
         setEnemyHP((hp) => Math.max(0, hp - dmg));
 
         // ritorno alla posizione base
@@ -141,6 +172,7 @@ export default function Battle() {
           animRef.current.sprite = SPRITE_SRC_PLAYER;
           animRef.current.isAttacking = false;
           redraw(ctx);
+          endPlayerTurn(double); // se speciale → salta turno
         }, 200);
       }
     }
@@ -148,33 +180,119 @@ export default function Battle() {
     requestAnimationFrame(animate);
   }
 
+  //attiva parata, annulla prossimo danno subito
+  function handleShield() {
+    if (turn !== "player") return;
+    setShieldActive(true);
+    endPlayerTurn();
+  }
+
+  //logica turno nemico (con animazione)
+  function enemyTurn() {
+    if (enemyHp <= 0) return; // se è morto non attacca
+
+    let actions = 1;
+    if (playerSkipTurn) {
+      actions = 2; // se player ha fatto special, nemico gioca due volte
+      setPlayerSkipTurn(false);
+    }
+
+    function act(n) {
+      if (n > actions) {
+        setTurn("player"); // ritorno al player
+        return;
+      }
+
+      // animazione di avanzamento
+      animRef.current.enemyIsAttacking = true;
+      const ctx = canvasRef.current.getContext("2d");
+      const startX = RIGHT_X;
+      const endX = LEFT_X + 100; // si ferma vicino al player
+      const duration = 400;
+      const startTime = performance.now();
+
+      function animateEnemy(now) {
+        const elapsed = now - startTime;
+        const t = Math.min(elapsed / duration, 1);
+        animRef.current.enemyX = startX - (startX - endX) * t;
+
+        redraw(ctx);
+
+        if (t < 1) {
+          requestAnimationFrame(animateEnemy);
+        } else {
+          // infligge danno
+          const dmg = Math.floor(5 + Math.random() * 11); // danno nemico 5-15
+          if (shieldActive) {
+            setShieldActive(false); // parata usata, annulla danno {currently bugged}
+          } else {
+            setPlayerHP((hp) => Math.max(0, hp - dmg));
+          }
+
+          // ritorno alla posizione iniziale
+          setTimeout(() => {
+            animRef.current.enemyX = startX;
+            animRef.current.enemyIsAttacking = false;
+            redraw(ctx);
+            setTimeout(() => act(n + 1), 500); // turno successivo se doppia azione
+          }, 200);
+        }
+      }
+
+      requestAnimationFrame(animateEnemy);
+    }
+
+    act(1);
+  }
+
   useEffect(() => {
     if (!loaded) return; // if they're not ready it doesn't render
     const ctx = canvasRef.current.getContext("2d");
 
     redraw(ctx);
-  }, [loaded]);
+  }, [loaded, playerHp, enemyHp]);
   //actually draws the sprites using references for context, source and position of sprites in canvas
 
   return (
     // add flex container
     <div className="d-flex g-12 align-items-center flex-direction-column">
-      {/* set canvas ref. measurements and basic border style  */}
       <canvas
         ref={canvasRef}
         width={CANVAS_W}
         height={CANVAS_H}
         style={{ border: "1px solid #333" }}
       />
-      {/* set base ui for testing */}
+
       <div className="ui_controls m-5">
-        <button onClick={handleAttack} type="button" className="nes-btn">
+        <button
+          onClick={() => handleAttack(false)}
+          type="button"
+          className="nes-btn"
+          disabled={turn !== "player"}
+        >
           <span className="nes-text">Attack</span>
         </button>
-        <div className="player">Player HP:{playerHp}</div>{" "}
-        {/* testing track of player info*/}
-        <div className="enemy">Enemy HP:{enemyHp}</div>{" "}
-        {/* testing track of enemy info*/}
+        <button
+          onClick={() => handleAttack(true)}
+          type="button"
+          className="nes-btn is-warning"
+          disabled={turn !== "player"}
+        >
+          <span className="nes-text">Light Attack</span>
+        </button>
+        <button
+          onClick={handleShield}
+          type="button"
+          className="nes-btn is-success"
+          disabled={turn !== "player"}
+        >
+          <span className="nes-text">Shield</span>
+        </button>
+        <div>Turno: {turn}</div> {/* debug turno - mostra il turno attuale */}
+        <div className="player">Player HP:{playerHp}</div>
+        {/* player info tracking */}
+        <div className="enemy">Enemy HP:{enemyHp}</div>
+        {/* enemy info tracking */}
       </div>
     </div>
   );
