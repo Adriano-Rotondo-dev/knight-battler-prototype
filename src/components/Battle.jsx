@@ -5,6 +5,7 @@ const CANVAS_W = 640;
 const CANVAS_H = 320;
 
 //set sprites constant src
+const SPRITE_SRC_BG = "/sprites/castle_background.png"; // background del canvas
 const SPRITE_SRC_PLAYER = "/sprites/blue.png";
 const SPRITE_SRC_ENEMY = "/sprites/green.png";
 const SPRITE_SRC_PLAYER_STRIKE = "/sprites/blue_strike.png";
@@ -17,13 +18,14 @@ const DRAW_SIZE = SPRITE_SIZE * SCALE; //calc effective size of sprite on render
 //set sprite positions
 const LEFT_X = 80; //player 1 position (left)
 const RIGHT_X = CANVAS_W - 80 - DRAW_SIZE; //enemy placement (right)
-const Y = (CANVAS_H - DRAW_SIZE) / 2; //vertical placement of sprites on rendering. calculate by dividing space by 2, centering sprites
+const Y = CANVAS_H - DRAW_SIZE; //vertical placement of sprites on rendering. Refactor to put sprites parallel with ground line on background
 
 export default function Battle() {
   // get <canvas> DOM with useRef
   const canvasRef = useRef(null);
 
   //load sprites to render them with drawImage
+  const bgImgRef = useRef(null);
   const playerImgRef = useRef(null);
   const enemyImgRef = useRef(null);
   const playerStrikeImgRef = useRef(null);
@@ -42,6 +44,7 @@ export default function Battle() {
   //load sprites on canvas
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
+    const bg = new Image(); //load background to canvas
     const p = new Image(); //load PLAYER sprite
     const ps = new Image(); //load PLAYER Strike sprite
     const pls = new Image(); //load PLAYER LightStrike sprite
@@ -49,16 +52,19 @@ export default function Battle() {
     let loadedCount = 0;
     const checkLoaded = () => {
       loadedCount++;
-      if (loadedCount === 4) setLoaded(true); //una volta caricati tutti gli sprite imposta lo stato
+      if (loadedCount === 5) setLoaded(true); //una volta caricati tutti gli sprite imposta lo stato
     };
+    bg.src = SPRITE_SRC_BG;
     p.src = SPRITE_SRC_PLAYER;
     ps.src = SPRITE_SRC_PLAYER_STRIKE;
     pls.src = SPRITE_SRC_PLAYER_LIGHTSTRIKE;
     e.src = SPRITE_SRC_ENEMY;
+    bg.onload = checkLoaded;
     p.onload = checkLoaded;
     ps.onload = checkLoaded;
     pls.onload = checkLoaded;
     e.onload = checkLoaded;
+    bgImgRef.current = bg;
     playerImgRef.current = p; //set PlayerImage to current loaded p image
     playerStrikeImgRef.current = ps; // set Player Strike Image to currently loaded images
     playerLightStrikeImgRef.current = pls; //set Player LightStrike Image to currently loaded pls image
@@ -106,8 +112,12 @@ export default function Battle() {
   });
 
   function redraw(ctx) {
-    ctx.fillStyle = "#202028";
-    ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+    if (bgImgRef.current && bgImgRef.current.complete) {
+      ctx.drawImage(bgImgRef.current, 0, 0, CANVAS_W, CANVAS_H);
+    } else {
+      ctx.fillStyle = "#202028"; // fallback in caso di errore di caricamento dell'immagine del canvas
+      ctx.fillRect(0, 0, CANVAS_W, CANVAS_H); // sostituito il background statico grigio con immagine di background precaricata
+    }
 
     // player
     const playerImg =
