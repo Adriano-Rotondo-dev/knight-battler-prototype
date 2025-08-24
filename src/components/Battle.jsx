@@ -38,6 +38,10 @@ export default function Battle() {
   const [enemyHp, setEnemyHP] = useState(100);
   //these are the starting states for lifebars
 
+  // refs sincroni per pf
+  const playerHpRef = useRef(100);
+  const enemyHpRef = useRef(100);
+
   //turn order states
   const [turn, setTurn] = useState("player"); // player o enemy
   const [shieldActive, setShieldActive] = useState(false); // stato di parata
@@ -139,9 +143,9 @@ export default function Battle() {
     // enemy
     drawSprite(ctx, enemyImgRef.current, animRef.current.enemyX, Y);
 
-    // lifebars
-    drawHP(ctx, "Player", playerHp, 100, 20, 20);
-    drawHP(ctx, "Enemy", enemyHp, 100, CANVAS_W - 160, 20);
+    // lifebars (usano valori ref per essere sincroni)
+    drawHP(ctx, "Player", playerHpRef.current, 100, 20, 20);
+    drawHP(ctx, "Enemy", enemyHpRef.current, 100, CANVAS_W - 160, 20);
   }
 
   // block {bugged - should avoid damage calculation}
@@ -173,9 +177,12 @@ export default function Battle() {
     setTimeout(enemyTurn, 500); // attesa breve e poi attacco nemico
   }
 
-  // calcolo pf in tempo reale, restituisce il nuovo valore senza dipendere da React
-  function calcHp(currentHp, dmg) {
-    return Math.max(0, currentHp - dmg);
+  // calcolo pf in tempo reale, aggiorna ref + stato React
+  function calcHp(ref, setState, dmg) {
+    const newHp = Math.max(0, ref.current - dmg);
+    ref.current = newHp;
+    setState(newHp);
+    return newHp;
   }
 
   //attacco player
@@ -207,9 +214,7 @@ export default function Battle() {
         const dmg = double
           ? Math.floor(20 + Math.random() * 21) // 20–40 se speciale
           : Math.floor(10 + Math.random() * 11); // 10–20 normale
-        const newEnemyHp = calcHp(enemyHp, dmg); // calcolo tempo reale pf
-        // aggiorna stato
-        setEnemyHP(newEnemyHp);
+        calcHp(enemyHpRef, setEnemyHP, dmg); // calcolo tempo reale pf
 
         // ritorno alla posizione base
         setTimeout(() => {
@@ -227,7 +232,7 @@ export default function Battle() {
 
   //logica turno nemico (con animazione)
   function enemyTurn() {
-    if (enemyHp <= 0) return; // se è morto non attacca
+    if (enemyHpRef.current <= 0) return; // se è morto non attacca
 
     let actions = 1;
     if (playerSkipTurn) {
@@ -264,8 +269,7 @@ export default function Battle() {
           if (shieldActive) {
             setShieldActive(false); // parata usata, annulla danno {currently bugged}
           } else {
-            const newPlayerHp = calcHp(playerHp, dmg);
-            setPlayerHP(newPlayerHp); //calcolo tempo reale dei pf
+            calcHp(playerHpRef, setPlayerHP, dmg); //calcolo tempo reale dei pf
           }
 
           // ritorno alla posizione iniziale
