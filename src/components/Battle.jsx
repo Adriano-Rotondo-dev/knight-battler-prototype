@@ -173,6 +173,11 @@ export default function Battle() {
     setTimeout(enemyTurn, 500); // attesa breve e poi attacco nemico
   }
 
+  // calcolo pf in tempo reale, restituisce il nuovo valore senza dipendere da React
+  function calcHp(currentHp, dmg) {
+    return Math.max(0, currentHp - dmg);
+  }
+
   //attacco player
   function handleAttack(double = false) {
     if (turn !== "player" || animRef.current.isAttacking) return;
@@ -202,7 +207,9 @@ export default function Battle() {
         const dmg = double
           ? Math.floor(20 + Math.random() * 21) // 20–40 se speciale
           : Math.floor(10 + Math.random() * 11); // 10–20 normale
-        setEnemyHP((hp) => Math.max(0, hp - dmg));
+        const newEnemyHp = calcHp(enemyHp, dmg); // calcolo tempo reale pf
+        // aggiorna stato
+        setEnemyHP(newEnemyHp);
 
         // ritorno alla posizione base
         setTimeout(() => {
@@ -248,7 +255,7 @@ export default function Battle() {
         animRef.current.enemyX = startX - (startX - endX) * t;
 
         redraw(ctx);
-
+        //enemy attack logic
         if (t < 1) {
           requestAnimationFrame(animateEnemy);
         } else {
@@ -257,7 +264,8 @@ export default function Battle() {
           if (shieldActive) {
             setShieldActive(false); // parata usata, annulla danno {currently bugged}
           } else {
-            setPlayerHP((hp) => Math.max(0, hp - dmg));
+            const newPlayerHp = calcHp(playerHp, dmg);
+            setPlayerHP(newPlayerHp); //calcolo tempo reale dei pf
           }
 
           // ritorno alla posizione iniziale
