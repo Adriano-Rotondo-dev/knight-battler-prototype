@@ -10,6 +10,7 @@ const SPRITE_SRC_PLAYER = "/sprites/blue.png";
 const SPRITE_SRC_ENEMY = "/sprites/green.png";
 const SPRITE_SRC_PLAYER_STRIKE = "/sprites/blue_strike.png";
 const SPRITE_SRC_PLAYER_LIGHTSTRIKE = "/sprites/blue_lightstrike.png"; // sprite per attacco speciale
+const SPRITE_SRC_PLAYER_BLOCK = "/sprites/blue_shield.png"; //sprite di blocco del player
 
 //set sprite sizes and scaling
 const SPRITE_SIZE = 64; //original sprite size in pixel
@@ -30,6 +31,7 @@ export default function Battle() {
   const enemyImgRef = useRef(null);
   const playerStrikeImgRef = useRef(null);
   const playerLightStrikeImgRef = useRef(null);
+  const playerBlockImgRef = useRef(null);
 
   // example states
   const [playerHp, setPlayerHP] = useState(100);
@@ -48,26 +50,30 @@ export default function Battle() {
     const p = new Image(); //load PLAYER sprite
     const ps = new Image(); //load PLAYER Strike sprite
     const pls = new Image(); //load PLAYER LightStrike sprite
+    const pb = new Image(); //load PLAYER block sprite
     const e = new Image(); //load ENEMY sprite
     let loadedCount = 0;
     const checkLoaded = () => {
       loadedCount++;
-      if (loadedCount === 5) setLoaded(true); //una volta caricati tutti gli sprite imposta lo stato
+      if (loadedCount === 6) setLoaded(true); //una volta caricati tutti gli sprite imposta lo stato
     };
     bg.src = SPRITE_SRC_BG;
     p.src = SPRITE_SRC_PLAYER;
     ps.src = SPRITE_SRC_PLAYER_STRIKE;
     pls.src = SPRITE_SRC_PLAYER_LIGHTSTRIKE;
+    pb.src = SPRITE_SRC_PLAYER_BLOCK;
     e.src = SPRITE_SRC_ENEMY;
     bg.onload = checkLoaded;
     p.onload = checkLoaded;
     ps.onload = checkLoaded;
     pls.onload = checkLoaded;
+    pb.onload = checkLoaded;
     e.onload = checkLoaded;
     bgImgRef.current = bg;
     playerImgRef.current = p; //set PlayerImage to current loaded p image
     playerStrikeImgRef.current = ps; // set Player Strike Image to currently loaded images
     playerLightStrikeImgRef.current = pls; //set Player LightStrike Image to currently loaded pls image
+    playerBlockImgRef.current = pb; // set Player Block Image to currently loaded pb image
     enemyImgRef.current = e; //set EnemyImage to current loaded e image
   }, []);
 
@@ -106,7 +112,8 @@ export default function Battle() {
   const animRef = useRef({
     playerX: LEFT_X, // posizione corrente player (si muove in avanti)
     sprite: SPRITE_SRC_PLAYER, // sprite attuale del player
-    isAttacking: false,
+    isAttacking: false, // animazione attacco attiva
+    isBlocking: false, // animazione blocco attiva
     enemyX: RIGHT_X, // posizione corrente nemico
     enemyIsAttacking: false, // animazione nemico
   });
@@ -120,12 +127,13 @@ export default function Battle() {
     }
 
     // player
-    const playerImg =
-      animRef.current.sprite === SPRITE_SRC_PLAYER
-        ? playerImgRef.current
-        : animRef.current.sprite === SPRITE_SRC_PLAYER_STRIKE
-        ? playerStrikeImgRef.current
-        : playerLightStrikeImgRef.current;
+    const playerImg = animRef.current.isBlocking
+      ? playerBlockImgRef.current // sprite scudo
+      : animRef.current.sprite === SPRITE_SRC_PLAYER
+      ? playerImgRef.current
+      : animRef.current.sprite === SPRITE_SRC_PLAYER_STRIKE
+      ? playerStrikeImgRef.current
+      : playerLightStrikeImgRef.current;
     drawSprite(ctx, playerImg, animRef.current.playerX, Y);
 
     // enemy
@@ -135,6 +143,26 @@ export default function Battle() {
     drawHP(ctx, "Player", playerHp, 100, 20, 20);
     drawHP(ctx, "Enemy", enemyHp, 100, CANVAS_W - 160, 20);
   }
+
+  // block {bugged - should avoid damage calculation}
+  function handleShield() {
+    if (turn !== "player") return;
+    setShieldActive(true);
+
+    // start block animation
+    animRef.current.isBlocking = true;
+    const ctx = canvasRef.current.getContext("2d");
+    redraw(ctx);
+
+    // blue_shied.png animation timer to maintain
+    setTimeout(() => {
+      animRef.current.isBlocking = false;
+      animRef.current.sprite = SPRITE_SRC_PLAYER;
+      redraw(ctx);
+      endPlayerTurn();
+    }, 500); //mantiene il blocco per 0.5 sec
+  }
+  //animation bugged, acts like a "protect", runs animation then after makes enemy knight move
 
   //fine turno player, passa al nemico
   function endPlayerTurn(skip = false) {
@@ -188,13 +216,6 @@ export default function Battle() {
     }
 
     requestAnimationFrame(animate);
-  }
-
-  //attiva parata, annulla prossimo danno subito
-  function handleShield() {
-    if (turn !== "player") return;
-    setShieldActive(true);
-    endPlayerTurn();
   }
 
   //logica turno nemico (con animazione)
