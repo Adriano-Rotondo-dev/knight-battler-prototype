@@ -325,6 +325,15 @@ export default function Battle() {
         <div className="enemy">Enemy HP:{enemyHp}</div>
         {/* enemy info tracking */}
       </div>
+
+      {/* bottone di restart/reload */}
+      <button
+        onClick={() => window.location.reload()}
+        type="button"
+        className="nes-btn is-error"
+      >
+        <span className="nes-text">Restart</span>
+      </button>
     </div>
   );
 }
