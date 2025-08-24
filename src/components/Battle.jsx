@@ -328,7 +328,7 @@ export default function Battle() {
         style={{ border: "1px solid #333" }}
       />
 
-      <div className="ui_controls m-5">
+      <div className="ui_controls">
         <button
           onClick={() => handleAttack(false)}
           type="button"
@@ -343,7 +343,7 @@ export default function Battle() {
           className="nes-btn is-warning"
           disabled={turn !== "player" || gameOver}
         >
-          <span className="nes-text">Light Attack</span>
+          <span className="nes-text">Lighting Attack</span>
         </button>
         <button
           onClick={handleShield}
@@ -359,7 +359,6 @@ export default function Battle() {
         <div className="enemy">Enemy HP:{enemyHp}</div>
         {/* enemy info tracking */}
       </div>
-
       {/* bottone di restart/reload */}
       <button
         onClick={() => window.location.reload()}
