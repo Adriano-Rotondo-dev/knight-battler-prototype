@@ -14,8 +14,8 @@ const SPRITE_SRC_PLAYER_BLOCK = "/sprites/blue_shield.png"; //sprite di blocco d
 
 //set sprite sizes and scaling
 const SPRITE_SIZE = 64; //original sprite size in pixel
-const SCALE = 3; //scale by 3 the original 64x64 sprite
-const DRAW_SIZE = SPRITE_SIZE * SCALE; //calc effective size of sprite on rendering (192x192)
+const SCALE = 2.5; //scale modificato per adattare meglio sprite e background
+const DRAW_SIZE = SPRITE_SIZE * SCALE; //calc effective size of sprite on rendering
 //set sprite positions
 const LEFT_X = 80; //player 1 position (left)
 const RIGHT_X = CANVAS_W - 80 - DRAW_SIZE; //enemy placement (right)
@@ -38,14 +38,11 @@ export default function Battle() {
   const [enemyHp, setEnemyHP] = useState(100);
   //these are the starting states for lifebars
 
-  // refs sincroni per pf
-  const playerHpRef = useRef(100);
-  const enemyHpRef = useRef(100);
-
   //turn order states
   const [turn, setTurn] = useState("player"); // player o enemy
   const [shieldActive, setShieldActive] = useState(false); // stato di parata
   const [playerSkipTurn, setPlayerSkipTurn] = useState(false); // salta un turno dopo special
+  const [gameOver, setGameOver] = useState(false); // stato di vittoria o sconfitta
 
   //load sprites on canvas
   const [loaded, setLoaded] = useState(false);
@@ -143,14 +140,27 @@ export default function Battle() {
     // enemy
     drawSprite(ctx, enemyImgRef.current, animRef.current.enemyX, Y);
 
-    // lifebars (usano valori ref per essere sincroni)
-    drawHP(ctx, "Player", playerHpRef.current, 100, 20, 20);
-    drawHP(ctx, "Enemy", enemyHpRef.current, 100, CANVAS_W - 160, 20);
+    // lifebars
+    drawHP(ctx, "Player", playerHp, 100, 20, 20);
+    drawHP(ctx, "Enemy", enemyHp, 100, CANVAS_W - 160, 20);
+
+    // scritta di vittoria o sconfitta, rimane fissa
+    if (gameOver) {
+      ctx.fillStyle = "#fff";
+      ctx.font = "32px PressStart2P";
+      ctx.textAlign = "center";
+      ctx.fillText(
+        playerHp <= 0 ? "DEFEAT!" : "VICTORY!",
+        CANVAS_W / 2,
+        CANVAS_H / 2
+      );
+      ctx.textAlign = "left"; // reset
+    }
   }
 
   // block {bugged - should avoid damage calculation}
   function handleShield() {
-    if (turn !== "player") return;
+    if (turn !== "player" || gameOver) return;
     setShieldActive(true);
 
     // start block animation
@@ -170,6 +180,10 @@ export default function Battle() {
 
   //fine turno player, passa al nemico
   function endPlayerTurn(skip = false) {
+    if (enemyHp <= 0) {
+      setGameOver(true);
+      return;
+    }
     setTurn("enemy");
     if (skip) {
       setPlayerSkipTurn(true); // se ha fatto attacco speciale, salta turno dopo
@@ -177,17 +191,14 @@ export default function Battle() {
     setTimeout(enemyTurn, 500); // attesa breve e poi attacco nemico
   }
 
-  // calcolo pf in tempo reale, aggiorna ref + stato React
-  function calcHp(ref, setState, dmg) {
-    const newHp = Math.max(0, ref.current - dmg);
-    ref.current = newHp;
-    setState(newHp);
-    return newHp;
+  // calcolo pf in tempo reale, restituisce il nuovo valore senza dipendere da React
+  function calcHp(currentHp, dmg) {
+    return Math.max(0, currentHp - dmg);
   }
 
   //attacco player
   function handleAttack(double = false) {
-    if (turn !== "player" || animRef.current.isAttacking) return;
+    if (turn !== "player" || animRef.current.isAttacking || gameOver) return;
 
     animRef.current.isAttacking = true;
     animRef.current.sprite = double
@@ -214,7 +225,9 @@ export default function Battle() {
         const dmg = double
           ? Math.floor(20 + Math.random() * 21) // 20–40 se speciale
           : Math.floor(10 + Math.random() * 11); // 10–20 normale
-        calcHp(enemyHpRef, setEnemyHP, dmg); // calcolo tempo reale pf
+        const newEnemyHp = calcHp(enemyHp, dmg); // calcolo tempo reale pf
+        // aggiorna stato
+        setEnemyHP(newEnemyHp);
 
         // ritorno alla posizione base
         setTimeout(() => {
@@ -232,7 +245,7 @@ export default function Battle() {
 
   //logica turno nemico (con animazione)
   function enemyTurn() {
-    if (enemyHpRef.current <= 0) return; // se è morto non attacca
+    if (enemyHp <= 0 || gameOver) return; // se è morto non attacca
 
     let actions = 1;
     if (playerSkipTurn) {
@@ -242,6 +255,10 @@ export default function Battle() {
 
     function act(n) {
       if (n > actions) {
+        if (playerHp <= 0) {
+          setGameOver(true);
+          return;
+        }
         setTurn("player"); // ritorno al player
         return;
       }
@@ -269,7 +286,8 @@ export default function Battle() {
           if (shieldActive) {
             setShieldActive(false); // parata usata, annulla danno {currently bugged}
           } else {
-            calcHp(playerHpRef, setPlayerHP, dmg); //calcolo tempo reale dei pf
+            const newPlayerHp = calcHp(playerHp, dmg);
+            setPlayerHP(newPlayerHp); //calcolo tempo reale dei pf
           }
 
           // ritorno alla posizione iniziale
@@ -277,6 +295,10 @@ export default function Battle() {
             animRef.current.enemyX = startX;
             animRef.current.enemyIsAttacking = false;
             redraw(ctx);
+            if (playerHp <= 0) {
+              setGameOver(true);
+              return;
+            }
             setTimeout(() => act(n + 1), 500); // turno successivo se doppia azione
           }, 200);
         }
@@ -293,7 +315,7 @@ export default function Battle() {
     const ctx = canvasRef.current.getContext("2d");
 
     redraw(ctx);
-  }, [loaded, playerHp, enemyHp]);
+  }, [loaded, playerHp, enemyHp, gameOver]);
   //actually draws the sprites using references for context, source and position of sprites in canvas
 
   return (
@@ -311,7 +333,7 @@ export default function Battle() {
           onClick={() => handleAttack(false)}
           type="button"
           className="nes-btn"
-          disabled={turn !== "player"}
+          disabled={turn !== "player" || gameOver}
         >
           <span className="nes-text">Attack</span>
         </button>
@@ -319,7 +341,7 @@ export default function Battle() {
           onClick={() => handleAttack(true)}
           type="button"
           className="nes-btn is-warning"
-          disabled={turn !== "player"}
+          disabled={turn !== "player" || gameOver}
         >
           <span className="nes-text">Light Attack</span>
         </button>
@@ -327,7 +349,7 @@ export default function Battle() {
           onClick={handleShield}
           type="button"
           className="nes-btn is-success"
-          disabled={turn !== "player"}
+          disabled={turn !== "player" || gameOver}
         >
           <span className="nes-text">Shield</span>
         </button>
