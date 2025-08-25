@@ -1,3 +1,17 @@
+A pokèmon inspired battler with turn based combat. The Green Knight logic works similar to the player, trying to defeat you with his attacks!
+Try to win! 
+- Single Attack 
+- Lightning Attacks deals double the damage, but skips your after! The Green knight will take his revenge!
+- The Block might defend you from the damage od the knight! Careful! {needs fixing!}
+- Restart with the dedicated button or reload the page to start again!
+- graphics inspired by classical nes games! 
+
+Shoutout to nes.css creators. An awesome library to use for little gaming projects like this one.
+
+** THIS IS A PERSONAL PROJECT MADE TO TEST MY UNDERSTANDING OF REACT NATIVE AND CANVAS WORKS. THIS GAME IS NOT MEANT TO BE USED OR BOUGHT ** 
+
+
+
 # Base Structure
 
 - install bootstrap
